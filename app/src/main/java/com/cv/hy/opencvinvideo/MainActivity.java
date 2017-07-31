@@ -22,6 +22,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import org.opencv.android.OpenCVLoader;
@@ -49,6 +50,7 @@ import static org.opencv.videoio.Videoio.CAP_PROP_POS_FRAMES;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button play;
+    private Button playDog;
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
     private SvCallback callback;
@@ -78,7 +80,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initView(){
-        play = (Button) findViewById(R.id.play);
+        play = (Button) findViewById(R.id.play1);
+        playDog = (Button) findViewById(R.id.play2);
         surfaceView = (SurfaceView) findViewById(R.id.surface);
     }
     private void initData(){
@@ -88,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         surfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
         surfaceHolder.addCallback(callback);
         play.setOnClickListener(this );
+        playDog.setOnClickListener(this );
     }
     private Bitmap detect(Mat frame) {
         Mat imageMat = new Mat();
@@ -107,9 +111,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initializeOpenCVDependencies() {
-        videoFile = new File(Environment.getExternalStorageDirectory(), "out1.avi");
-        videoCapture = new VideoCapture();
-        videoCapture.open(videoFile.getPath());
         try {
             // Copy the resource into a temp file so OpenCV can load it
 //            InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
@@ -137,11 +138,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.play1:
+                videoFile = new File(Environment.getExternalStorageDirectory(), "out3.avi");
+                break;
+            case R.id.play2:
+                videoFile = new File(Environment.getExternalStorageDirectory(), "out1.avi");
+                break;
+        }
+        videoCapture = new VideoCapture();
+        videoCapture.open(videoFile.getPath());
         if(videoCapture.isOpened()) {
-//            double videoTime = videoCapture.get(CAP_PROP_FRAME_COUNT) / videoCapture.get(CAP_PROP_FPS);
-//            Log.i("Main:timeLen:", String.valueOf(videoTime));
             callback.startAnim();
             play.setEnabled(false);
+            playDog.setEnabled(false);
+        }else{
+            Toast.makeText(getApplicationContext(), "Can't get the video file", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -181,16 +193,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void drawBitmap(Bitmap bitmap) throws NullPointerException{
-//        if(position>=totalCount)
-//        {
-//            isDrawing=false;
-//            decodeHandler.sendEmptyMessage(-2);
-//            canvas=surfaceHolder.lockCanvas();
-//            //clear surfaceView
-//            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-//            surfaceHolder.unlockCanvasAndPost(canvas);
-//            return;
-//        }
         Canvas canvas=surfaceHolder.lockCanvas(rect);
 //        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
         canvas.drawBitmap(bitmap,null,rect,null);
@@ -207,8 +209,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (videoCapture.read(frame)) {
                     long endTime = getTickCount();
                     Log.i("Main   readTime:", (endTime - startTime) / getTickFrequency() + " s");
-//                    String path = Environment.getExternalStorageDirectory() + File.separator + "test" + File.separator + i + ".jpg";
-//                    Imgcodecs.imwrite(path, frame);
                     try {
                         blockingQueueDetect.put(frame);
                     } catch (InterruptedException e) {
@@ -225,21 +225,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void run()
         {
-//            Looper.prepare();
-//            decodeHandler=new Handler(Looper.myLooper())
-//            {
-//                @Override
-//                public void handleMessage(Message msg)
-//                {
-//                    super.handleMessage(msg);
-//                    if(msg.what==-2)
-//                    {
-//                        getLooper().quit();
-//                        return;
-//                    }
-//                    decodeBitmap(msg.what);
-//                }
-//            };
             while (true) {
                 try {
                     Mat toDetect = blockingQueueDetect.take();
@@ -252,7 +237,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     drawBitmap(bitmap);
                     endTime = getTickCount();
                     Log.i("Main   drawTime:", (endTime - startTime) / getTickFrequency() + " s");
-                    Thread.sleep(50);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     break;
@@ -293,11 +278,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             blockingQueueDetect.clear();
             play.setEnabled(true);
+            playDog.setEnabled(true);
             //this is necessary
-            if (produceBitmap.isAlive()) {
+            if (null!=produceBitmap&&produceBitmap.isAlive()) {
                 produceBitmap.interrupt();
             }
-            if (playBitmap.isAlive()) {
+            if (null!=playBitmap&&playBitmap.isAlive()) {
                 playBitmap.interrupt();
             }
         }
